@@ -3,14 +3,14 @@ package dev.jackraidenph;
 import com.sun.source.util.JavacTask;
 import com.sun.source.util.Plugin;
 import com.sun.tools.javac.api.BasicJavacTask;
-import dev.jackraidenph.util.JMAFTaskListener;
+import dev.jackraidenph.util.JMAFTestTaskListener;
 
 public class JMAFCompilerPlugin implements Plugin {
     public static final String NAME = "JMAFCompilerPlugin";
 
     @Override
     public void init(JavacTask task, String... args) {
-        task.addTaskListener(new JMAFTaskListener(((BasicJavacTask) task).getContext()));
+        task.addTaskListener(new JMAFTestTaskListener(((BasicJavacTask) task).getContext()));
     }
 
     @Override

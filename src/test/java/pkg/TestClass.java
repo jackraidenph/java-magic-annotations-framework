@@ -1,3 +1,5 @@
+package pkg;
+
 import dev.jackraidenph.annotation.TestMarkerAnnotation;
 import org.junit.jupiter.api.Test;
 
