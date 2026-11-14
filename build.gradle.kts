@@ -9,7 +9,7 @@ repositories {
     mavenCentral()
 }
 
-val optsCompile = listOf(
+val optsCompileModule = listOf(
     "--add-exports=jdk.compiler/com.sun.tools.javac.api=jmaf",
     "--add-exports=jdk.compiler/com.sun.tools.javac.main=jmaf",
     "--add-exports=jdk.compiler/com.sun.tools.javac.tree=jmaf",
@@ -18,9 +18,13 @@ val optsCompile = listOf(
     "--add-exports=jdk.compiler/com.sun.tools.javac.model=jmaf"
 )
 
-val optsRun = listOf(
-    "--add-opens=jdk.compiler/com.sun.tools.javac.code=jmaf",
-    "--add-opens=jdk.compiler/com.sun.tools.javac.comp=jmaf"
+val optsCompile = listOf(
+    "--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED",
+    "--add-exports=jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED",
+    "--add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED",
+    "--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED",
+    "--add-exports=jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED",
+    "--add-exports=jdk.compiler/com.sun.tools.javac.model=ALL-UNNAMED"
 )
 
 tasks.named<JavaCompile>("compileTestJava") {
@@ -31,11 +35,7 @@ tasks.withType<JavaCompile>().configureEach {
     options.isFork = true
     options.forkOptions.jvmArgs?.addAll(optsCompile)
     options.compilerArgs.addAll(optsCompile)
-}
-
-tasks.withType<Test>().configureEach {
-    jvmArgs(optsCompile)
-    jvmArgs(optsRun)
+    options.compilerArgs.addAll(optsCompileModule)
 }
 
 val commonForTests = sourceSets.create("commonForTests") {
