@@ -9,15 +9,15 @@ repositories {
     mavenCentral()
 }
 
-val commonForTests = sourceSets.create("commonForTests") {
+val testLibraryConsumer = sourceSets.create("testLibraryConsumer") {
     compileClasspath += sourceSets.main.get().output
     runtimeClasspath += sourceSets.main.get().output
 }
 
 sourceSets {
     test {
-        compileClasspath += commonForTests.output
-        runtimeClasspath += commonForTests.output
+        compileClasspath += testLibraryConsumer.output
+        runtimeClasspath += testLibraryConsumer.output
     }
 }
 
@@ -46,7 +46,7 @@ fun addExportsToCompile(module: String, vararg tasks: String) {
 }
 
 addExportsToCompile("jmaf", "compileJava")
-addExportsToCompile("ALL-UNNAMED", "compileCommonForTestsJava", "compileTestJava")
+addExportsToCompile("ALL-UNNAMED", "compileTestLibraryConsumerJava", "compileTestJava")
 
 dependencies {
     testImplementation(platform("org.junit:junit-bom:6.0.0"))
