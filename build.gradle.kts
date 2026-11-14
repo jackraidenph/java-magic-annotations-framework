@@ -10,17 +10,17 @@ repositories {
 }
 
 val optsCompile = listOf(
-    "--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED",
-    "--add-exports=jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED",
-    "--add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED",
-    "--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED",
-    "--add-exports=jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED",
-    "--add-exports=jdk.compiler/com.sun.tools.javac.model=ALL-UNNAMED"
+    "--add-exports=jdk.compiler/com.sun.tools.javac.api=jmaf",
+    "--add-exports=jdk.compiler/com.sun.tools.javac.main=jmaf",
+    "--add-exports=jdk.compiler/com.sun.tools.javac.tree=jmaf",
+    "--add-exports=jdk.compiler/com.sun.tools.javac.util=jmaf",
+    "--add-exports=jdk.compiler/com.sun.tools.javac.processing=jmaf",
+    "--add-exports=jdk.compiler/com.sun.tools.javac.model=jmaf"
 )
 
 val optsRun = listOf(
-    "--add-opens=jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED",
-    "--add-opens=jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED"
+    "--add-opens=jdk.compiler/com.sun.tools.javac.code=jmaf",
+    "--add-opens=jdk.compiler/com.sun.tools.javac.comp=jmaf"
 )
 
 tasks.named<JavaCompile>("compileTestJava") {

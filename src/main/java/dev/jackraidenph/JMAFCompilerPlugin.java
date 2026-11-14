@@ -4,6 +4,7 @@ import com.sun.source.util.JavacTask;
 import com.sun.source.util.Plugin;
 import com.sun.tools.javac.api.BasicJavacTask;
 import com.sun.tools.javac.util.Context;
+import dev.jackraidenph.api.AbstractContextTaskListener;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
