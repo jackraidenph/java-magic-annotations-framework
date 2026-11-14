@@ -30,21 +30,23 @@ val requiredExports = listOf(
     "jdk.compiler/com.sun.tools.javac.model"
 )
 
-tasks.named<JavaCompile>("compileJava") {
-    val exportFlags = requiredExports.map { "--add-exports".plus('=').plus(it).plus("=jmaf") }.toList()
-    options.isFork = true
-    options.forkOptions.jvmArgs?.addAll(exportFlags)
-    options.compilerArgs.addAll(exportFlags)
+fun makeExports(module: String): List<String> {
+    return requiredExports.map { "--add-exports".plus('=').plus(it).plus('=').plus(module) }.toList()
 }
 
-listOf("compileCommonForTestsJava", "compileTestJava").forEach {
-    tasks.named<JavaCompile>(it) {
-        val exportFlags = requiredExports.map { "--add-exports".plus('=').plus(it).plus("=ALL-UNNAMED") }.toList()
-        options.isFork = true
-        options.forkOptions.jvmArgs?.addAll(exportFlags)
-        options.compilerArgs.addAll(exportFlags)
+fun addExportsToCompile(module: String, vararg tasks: String) {
+    tasks.forEach {
+        project.tasks.named<JavaCompile>(it) {
+            val exportFlags = makeExports(module)
+            options.isFork = true
+            options.forkOptions.jvmArgs?.addAll(exportFlags)
+            options.compilerArgs.addAll(exportFlags)
+        }
     }
 }
+
+addExportsToCompile("jmaf", "compileJava")
+addExportsToCompile("ALL-UNNAMED", "compileCommonForTestsJava", "compileTestJava")
 
 dependencies {
     testImplementation(platform("org.junit:junit-bom:6.0.0"))
