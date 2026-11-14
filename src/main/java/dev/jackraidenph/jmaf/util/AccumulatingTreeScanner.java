@@ -1,9 +1,9 @@
-package dev.jackraidenph.util;
+package dev.jackraidenph.jmaf.util;
 
 import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.util.TreeScanner;
-import dev.jackraidenph.util.AccumulatingTreeScanner.ScanContext;
+import dev.jackraidenph.jmaf.util.AccumulatingTreeScanner.ScanContext;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;

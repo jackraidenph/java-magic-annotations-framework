@@ -1,4 +1,4 @@
-package dev.jackraidenph.annotation.validation;
+package dev.jackraidenph.jmaf.annotation.validation;
 
 import java.lang.annotation.Documented;
 

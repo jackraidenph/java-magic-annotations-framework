@@ -1,4 +1,4 @@
-package dev.jackraidenph.validation;
+package dev.jackraidenph.jmaf.validation;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;

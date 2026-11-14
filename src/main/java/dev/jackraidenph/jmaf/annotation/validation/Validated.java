@@ -1,6 +1,6 @@
-package dev.jackraidenph.annotation.validation;
+package dev.jackraidenph.jmaf.annotation.validation;
 
-import dev.jackraidenph.validation.Validator;
+import dev.jackraidenph.jmaf.validation.Validator;
 
 import java.lang.annotation.*;
 

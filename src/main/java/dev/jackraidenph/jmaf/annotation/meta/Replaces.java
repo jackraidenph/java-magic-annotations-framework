@@ -1,4 +1,4 @@
-package dev.jackraidenph.annotation.meta;
+package dev.jackraidenph.jmaf.annotation.meta;
 
 import java.lang.annotation.*;
 import java.util.function.Function;

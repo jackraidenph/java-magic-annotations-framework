@@ -1,4 +1,4 @@
-package dev.jackraidenph.api;
+package dev.jackraidenph.jmaf.api;
 
 import com.sun.source.util.TaskListener;
 import com.sun.tools.javac.util.Context;

@@ -9,11 +9,11 @@ import com.sun.tools.javac.tree.JCTree.JCModifiers;
 import com.sun.tools.javac.util.Context;
 import annotation.TestGeneratedAnnotation;
 import annotation.TestMarkerAnnotation;
-import dev.jackraidenph.api.AbstractContextTaskListener;
-import dev.jackraidenph.util.AccumulatingTreeScanner;
-import dev.jackraidenph.util.AccumulatingTreeScanner.ScanContext;
-import dev.jackraidenph.util.AccumulatingTreeScanner.TreeContext;
-import dev.jackraidenph.util.TreeMakerHelper;
+import dev.jackraidenph.jmaf.api.AbstractContextTaskListener;
+import dev.jackraidenph.jmaf.util.AccumulatingTreeScanner;
+import dev.jackraidenph.jmaf.util.AccumulatingTreeScanner.ScanContext;
+import dev.jackraidenph.jmaf.util.AccumulatingTreeScanner.TreeContext;
+import dev.jackraidenph.jmaf.util.TreeMakerHelper;
 
 import java.util.Map;
 

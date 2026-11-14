@@ -1,4 +1,4 @@
-package dev.jackraidenph.util;
+package dev.jackraidenph.jmaf.util;
 
 import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.tree.ImportTree;
