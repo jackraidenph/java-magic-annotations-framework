@@ -1,4 +1,4 @@
-package dev.jackraidenph.annotation;
+package annotation;
 
 public @interface TestMarkerAnnotation {
 }

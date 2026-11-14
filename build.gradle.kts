@@ -38,6 +38,18 @@ tasks.withType<Test>().configureEach {
     jvmArgs(optsRun)
 }
 
+val commonForTests = sourceSets.create("commonForTests") {
+    compileClasspath += sourceSets.main.get().output
+    runtimeClasspath += sourceSets.main.get().output
+}
+
+sourceSets {
+    test {
+        compileClasspath += commonForTests.output
+        runtimeClasspath += commonForTests.output
+    }
+}
+
 dependencies {
     testImplementation(platform("org.junit:junit-bom:6.0.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")

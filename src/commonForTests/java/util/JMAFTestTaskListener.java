@@ -1,29 +1,29 @@
-package dev.jackraidenph.util;
+package util;
 
 import com.sun.source.tree.Tree;
 import com.sun.source.util.TaskEvent;
 import com.sun.source.util.TaskEvent.Kind;
-import com.sun.source.util.TaskListener;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.JCTree.JCCompilationUnit;
 import com.sun.tools.javac.tree.JCTree.JCModifiers;
 import com.sun.tools.javac.util.Context;
-import com.sun.tools.javac.util.Names;
-import dev.jackraidenph.annotation.TestGeneratedAnnotation;
-import dev.jackraidenph.annotation.TestMarkerAnnotation;
+import annotation.TestGeneratedAnnotation;
+import annotation.TestMarkerAnnotation;
+import dev.jackraidenph.AbstractContextTaskListener;
+import dev.jackraidenph.util.AccumulatingTreeScanner;
 import dev.jackraidenph.util.AccumulatingTreeScanner.ScanContext;
 import dev.jackraidenph.util.AccumulatingTreeScanner.TreeContext;
+import dev.jackraidenph.util.TreeMakerHelper;
 
 import java.util.Map;
 
-public class JMAFTestTaskListener implements TaskListener {
+public class JMAFTestTaskListener extends AbstractContextTaskListener {
 
     private final TreeMakerHelper treeMakerHelper;
-    private final Names namesUtil;
 
     public JMAFTestTaskListener(Context context) {
+        super(context);
         this.treeMakerHelper = new TreeMakerHelper(context);
-        this.namesUtil = Names.instance(context);
     }
 
     @Override
