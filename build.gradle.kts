@@ -9,35 +9,6 @@ repositories {
     mavenCentral()
 }
 
-val optsCompileModule = listOf(
-    "--add-exports=jdk.compiler/com.sun.tools.javac.api=jmaf",
-    "--add-exports=jdk.compiler/com.sun.tools.javac.main=jmaf",
-    "--add-exports=jdk.compiler/com.sun.tools.javac.tree=jmaf",
-    "--add-exports=jdk.compiler/com.sun.tools.javac.util=jmaf",
-    "--add-exports=jdk.compiler/com.sun.tools.javac.processing=jmaf",
-    "--add-exports=jdk.compiler/com.sun.tools.javac.model=jmaf"
-)
-
-val optsCompile = listOf(
-    "--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED",
-    "--add-exports=jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED",
-    "--add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED",
-    "--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED",
-    "--add-exports=jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED",
-    "--add-exports=jdk.compiler/com.sun.tools.javac.model=ALL-UNNAMED"
-)
-
-tasks.named<JavaCompile>("compileTestJava") {
-    outputs.upToDateWhen { false }
-}
-
-tasks.withType<JavaCompile>().configureEach {
-    options.isFork = true
-    options.forkOptions.jvmArgs?.addAll(optsCompile)
-    options.compilerArgs.addAll(optsCompile)
-    options.compilerArgs.addAll(optsCompileModule)
-}
-
 val commonForTests = sourceSets.create("commonForTests") {
     compileClasspath += sourceSets.main.get().output
     runtimeClasspath += sourceSets.main.get().output
@@ -47,6 +18,31 @@ sourceSets {
     test {
         compileClasspath += commonForTests.output
         runtimeClasspath += commonForTests.output
+    }
+}
+
+val requiredExports = listOf(
+    "jdk.compiler/com.sun.tools.javac.api",
+    "jdk.compiler/com.sun.tools.javac.main",
+    "jdk.compiler/com.sun.tools.javac.tree",
+    "jdk.compiler/com.sun.tools.javac.util",
+    "jdk.compiler/com.sun.tools.javac.processing",
+    "jdk.compiler/com.sun.tools.javac.model"
+)
+
+tasks.named<JavaCompile>("compileJava") {
+    val exportFlags = requiredExports.map { "--add-exports".plus('=').plus(it).plus("=jmaf") }.toList()
+    options.isFork = true
+    options.forkOptions.jvmArgs?.addAll(exportFlags)
+    options.compilerArgs.addAll(exportFlags)
+}
+
+listOf("compileCommonForTestsJava", "compileTestJava").forEach {
+    tasks.named<JavaCompile>(it) {
+        val exportFlags = requiredExports.map { "--add-exports".plus('=').plus(it).plus("=ALL-UNNAMED") }.toList()
+        options.isFork = true
+        options.forkOptions.jvmArgs?.addAll(exportFlags)
+        options.compilerArgs.addAll(exportFlags)
     }
 }
 
