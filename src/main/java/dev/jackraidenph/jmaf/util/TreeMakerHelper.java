@@ -137,20 +137,18 @@ public class TreeMakerHelper {
                 .toList();
     }
 
-    public boolean treeContainsUnfoldingAnnotation(Tree tree) {
-        com.sun.tools.javac.util.List<JCAnnotation> annotations = getAnnotations(tree);
-
-        Set<String> annotationNames = new HashSet<>();
-        for (JCAnnotation annotation : annotations) {
-            annotationNames.add(annotation.getAnnotationType().toString());
-        }
-
-        List<String> annotationImports = resolveNamesAgainstSymbols(annotationNames);
-
-        System.out.println(annotationImports);
-
-        return true;
-    }
+//    public boolean treeContainsUnfoldingAnnotation(Tree tree) {
+//        com.sun.tools.javac.util.List<JCAnnotation> annotations = getAnnotations(tree);
+//
+//        Set<String> annotationNames = new HashSet<>();
+//        for (JCAnnotation annotation : annotations) {
+//            annotationNames.add(annotation.getAnnotationType().toString());
+//        }
+//
+//        List<String> annotationImports = resolveNamesAgainstSymbols(annotationNames);
+//
+//        return true;
+//    }
 
 //    public void addAnnotationAndImport(JCCompilationUnit source, JCTree tree, JCClassDecl parentSymbol, Symbol symbol, Class<?> clazz, Map<String, Object> attributes) {
 //        at(source.pos).addImportIfNotPresent(source, clazz);
