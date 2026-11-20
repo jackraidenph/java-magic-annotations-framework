@@ -5,7 +5,7 @@ import java.util.function.Function;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
-public @interface Replaces {
+public @interface OverrideAttribute {
     String attribute();
 
     Class<? extends Annotation> in();

@@ -12,17 +12,19 @@ import com.sun.tools.javac.util.Context;
 import dev.jackraidenph.jmaf.api.AbstractContextTaskListener;
 import dev.jackraidenph.jmaf.util.AccumulatingTreeScanner;
 import dev.jackraidenph.jmaf.util.AccumulatingTreeScanner.TreeContext;
-import dev.jackraidenph.jmaf.util.TreeMakerHelper;
+import dev.jackraidenph.jmaf.util.TreesHelper;
+import dev.jackraidenph.jmaf.util.TreesHelper.AnnotationWithAttributes;
 
+import java.util.List;
 import java.util.Map;
 
 public class JMAFTestTaskListener extends AbstractContextTaskListener {
 
-    private final TreeMakerHelper treeMakerHelper;
+    private final TreesHelper treeMakerHelper;
 
     public JMAFTestTaskListener(Context context) {
         super(context);
-        this.treeMakerHelper = new TreeMakerHelper(context);
+        this.treeMakerHelper = new TreesHelper(context);
     }
 
     @Override
@@ -38,7 +40,7 @@ public class JMAFTestTaskListener extends AbstractContextTaskListener {
             }
             return (tree instanceof JCModifiers modifiers)
                     && !modifiers.annotations.isEmpty()
-                    && TreeMakerHelper.treeContainsAnnotation(tree, context.owner(), TestMarkerAnnotation.class);
+                    && TreesHelper.treeContainsAnnotation(tree, context.owner(), TestMarkerAnnotation.class);
         });
 
         e.getCompilationUnit().accept(scanner, null);
@@ -52,12 +54,16 @@ public class JMAFTestTaskListener extends AbstractContextTaskListener {
         JCCompilationUnit compilationUnit = ((JCCompilationUnit) context.owner());
         JCTree tree = (JCTree) context.tree();
 
-        treeMakerHelper.addAnnotation(
+        treeMakerHelper.addAnnotations(
                 tree,
                 context.parent(),
                 context.symbol(),
-                TestGeneratedAnnotation.class,
-                Map.of("value", "test", "number", 2)
+                List.of(
+                        new AnnotationWithAttributes(
+                                TestGeneratedAnnotation.class,
+                                Map.of("value", "test", "number", 2)
+                        )
+                )
         );
     }
 }
