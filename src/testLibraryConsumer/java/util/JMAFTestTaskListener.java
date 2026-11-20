@@ -26,8 +26,8 @@ public class JMAFTestTaskListener extends AbstractContextTaskListener {
     }
 
     @Override
-    public void finished(TaskEvent e) {
-        if (e.getCompilationUnit() == null || !e.getKind().equals(Kind.ENTER)) {
+    public void started(TaskEvent e) {
+        if (e.getCompilationUnit() == null || !e.getKind().equals(Kind.ANALYZE)) {
             return;
         }
 
