@@ -9,4 +9,8 @@ public abstract class AbstractContextTaskListener implements TaskListener {
     public AbstractContextTaskListener(Context context) {
         this.context = context;
     }
+
+    public Context getContext() {
+        return context;
+    }
 }

@@ -4,7 +4,14 @@ import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.tree.ImportTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.tree.Tree.Kind;
-import com.sun.tools.javac.tree.JCTree;
+import com.sun.tools.javac.code.Symbol;
+import com.sun.tools.javac.code.Symbol.ClassSymbol;
+import com.sun.tools.javac.code.Symbol.PackageSymbol;
+import com.sun.tools.javac.code.Symtab;
+import com.sun.tools.javac.comp.Annotate;
+import com.sun.tools.javac.comp.AttrContext;
+import com.sun.tools.javac.comp.Enter;
+import com.sun.tools.javac.comp.Env;
 import com.sun.tools.javac.tree.JCTree.*;
 import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.util.Context;
@@ -14,25 +21,22 @@ import com.sun.tools.javac.util.Names;
 import java.lang.annotation.Annotation;
 import java.util.*;
 import java.util.Map.Entry;
-import java.util.function.Consumer;
+import java.util.stream.StreamSupport;
 
 public class TreeMakerHelper {
 
     private final TreeMaker treeMaker;
     private final Names namesUtil;
+    private final Context context;
 
     public TreeMakerHelper(Context context) {
+        this.context = context;
         this.treeMaker = TreeMaker.instance(context);
         this.namesUtil = Names.instance(context);
     }
 
     //STATIC METHODS
 
-    public static <T> com.sun.tools.javac.util.List<T> copyAndMutate(com.sun.tools.javac.util.List<T> list, Consumer<List<T>> mutator) {
-        java.util.List<T> copy = new ArrayList<>(list);
-        mutator.accept(copy);
-        return com.sun.tools.javac.util.List.from(copy);
-    }
 
     public static com.sun.tools.javac.util.List<JCAnnotation> getAnnotations(Tree tree) {
         com.sun.tools.javac.util.List<JCAnnotation> annotations;
@@ -82,7 +86,9 @@ public class TreeMakerHelper {
         return source.getImports()
                 .stream()
                 .map(ImportTree::getQualifiedIdentifier)
-                .map(Tree::toString)
+                .filter(Objects::nonNull)
+                .map(q -> (JCFieldAccess) q)
+                .map(f -> f.selected + "." + f.name)
                 .anyMatch(s -> {
                     String qualified = packageName + "." + className;
                     boolean startsWithOnDemand = s.endsWith("*") && qualified.startsWith(s.substring(0, s.length() - 1));
@@ -101,6 +107,16 @@ public class TreeMakerHelper {
 
     //TREE MAKER METHODS
 
+    private static String className(String flatName) {
+        String topLevel = flatName.substring(flatName.lastIndexOf('.') + 1);
+        int dollar = topLevel.lastIndexOf('$');
+        if (dollar >= 0) {
+            return topLevel.substring(dollar + 1);
+        }
+
+        return topLevel;
+    }
+
     public TreeMaker wrapped() {
         return this.treeMaker;
     }
@@ -110,46 +126,116 @@ public class TreeMakerHelper {
         return this;
     }
 
-    public void addAnnotationAndImport(JCCompilationUnit source, JCTree tree, Class<?> clazz, Map<String, Object> attributes) {
-        at(source.pos).addImportIfNotPresent(source, clazz);
-        at(tree.pos).addAnnotation(tree, clazz, attributes);
+    public List<String> resolveNamesAgainstSymbols(Collection<String> names) {
+        return StreamSupport.stream(
+                        Symtab.instance(context).getAllClasses().spliterator(),
+                        false
+                )
+                .map(ClassSymbol::flatName)
+                .map(Objects::toString)
+                .filter(s -> names.contains(className(s)))
+                .toList();
     }
 
-    public void addImportIfNotPresent(JCCompilationUnit source, Class<?> clazz) {
-        if (!hasImport(source, clazz)) {
-            addImport(source, clazz);
+    public boolean treeContainsUnfoldingAnnotation(Tree tree) {
+        com.sun.tools.javac.util.List<JCAnnotation> annotations = getAnnotations(tree);
+
+        Set<String> annotationNames = new HashSet<>();
+        for (JCAnnotation annotation : annotations) {
+            annotationNames.add(annotation.getAnnotationType().toString());
         }
+
+        List<String> annotationImports = resolveNamesAgainstSymbols(annotationNames);
+
+        System.out.println(annotationImports);
+
+        return true;
     }
 
-    public void addImport(JCCompilationUnit source, Class<?> clazz) {
-        com.sun.tools.javac.util.List<JCTree> defs = source.defs;
+//    public void addAnnotationAndImport(JCCompilationUnit source, JCTree tree, JCClassDecl parentSymbol, Symbol symbol, Class<?> clazz, Map<String, Object> attributes) {
+//        at(source.pos).addImportIfNotPresent(source, clazz);
+//        at(tree.pos).addAnnotation(tree, parentSymbol, symbol, clazz, attributes);
+//    }
+//
+//    public void addImportIfNotPresent(JCCompilationUnit source, Class<?> clazz) {
+//        if (!hasImport(source, clazz)) {
+//            addImport(source, clazz);
+//        }
+//    }
+//
+//    public void addImport(JCCompilationUnit source, Class<?> clazz) {
+//        com.sun.tools.javac.util.List<JCTree> defs = source.defs;
+//
+//        Name packageName = namesUtil.fromString(clazz.getPackageName());
+//        Name annotationName = namesUtil.fromString(clazz.getSimpleName());
+//
+//        JCIdent pkg = treeMaker.Ident(packageName);
+//        pkg.sym = packageFromString(clazz.getPackageName());
+//
+//        JCFieldAccess fieldAccess = treeMaker.Select(pkg, annotationName);
+//        JCImport annotationImport = treeMaker.Import(fieldAccess, false);
+//
+//        source.defs = source.defs.append(annotationImport);
+//    }
 
-        Name packageName = namesUtil.fromString(clazz.getPackageName());
-        Name annotationName = namesUtil.fromString(clazz.getSimpleName());
-
-        source.defs = TreeMakerHelper.copyAndMutate(defs, l -> {
-            JCFieldAccess fieldAccess = treeMaker.Select(treeMaker.Ident(packageName), annotationName);
-            JCImport annotationImport = treeMaker.Import(fieldAccess, false);
-            l.add(findImportsIndex(source), annotationImport);
-        });
-    }
-
-    public void addAnnotation(Tree tree, Class<?> type, Map<String, Object> attributes) {
+    public void addAnnotation(Tree tree, JCClassDecl parent, Symbol symbol, Class<?> type, Map<String, Object> attributes) {
         com.sun.tools.javac.util.List<JCAnnotation> annotations = getAnnotations(tree);
         JCAnnotation annotation = makeAnnotation(type, attributes);
-        com.sun.tools.javac.util.List<JCAnnotation> mutated = copyAndMutate(annotations, l -> l.add(annotation));
+
+        com.sun.tools.javac.util.List<JCAnnotation> newAnnots;
 
         if (tree instanceof JCModifiers jcModifiers) {
-            jcModifiers.annotations = mutated;
+            newAnnots = jcModifiers.annotations = jcModifiers.annotations.append(annotation);
         } else if (tree instanceof JCAnnotatedType jcAnnotatedType) {
-            jcAnnotatedType.annotations = mutated;
+            newAnnots = jcAnnotatedType.annotations = jcAnnotatedType.annotations.append(annotation);
+        } else {
+            //Other cases are covered by getAnnotations()
+            throw new IllegalStateException();
         }
-        //Other cases are covered by getAnnotations()
+
+        Annotate annotate = Annotate.instance(context);
+        Enter enter = Enter.instance(context);
+        Env<AttrContext> env = enter.getEnv(parent.sym);
+        annotate.annotateLater(newAnnots, env, symbol, parent);
+    }
+
+    public Name fromString(String str) {
+        return namesUtil.fromString(str);
+    }
+
+    public ClassSymbol classFromString(String str) {
+        Iterator<ClassSymbol> iterator = Symtab.instance(context).getClassesForName(fromString(str)).iterator();
+        if (!iterator.hasNext()) {
+            return null;
+        }
+        return iterator.next();
+    }
+
+    public PackageSymbol packageFromString(String str) {
+        Iterator<PackageSymbol> iterator = Symtab.instance(context).getPackagesForName(fromString(str)).iterator();
+        if (!iterator.hasNext()) {
+            return null;
+        }
+        return iterator.next();
+    }
+
+    public JCExpression makeQualIdent(String type) {
+        Symbol symbol = classFromString(type);
+        return treeMaker.QualIdent(symbol);
+    }
+
+    public JCExpression makeQualIdent(Class<?> type) {
+        String[] parts = type.getCanonicalName().split("\\.");
+        JCExpression expr = treeMaker.Ident(namesUtil.fromString(parts[0]));
+        for (int i = 1; i < parts.length; i++) {
+            expr = treeMaker.Select(expr, namesUtil.fromString(parts[i]));
+        }
+        return expr;
     }
 
     public JCAnnotation makeAnnotation(Class<?> type, Map<String, Object> attributes) {
-        Name annotName = namesUtil.fromString(type.getSimpleName());
-        JCIdent identity = treeMaker.Ident(annotName);
+        Symbol sym = classFromString(type.getName());
+        JCExpression identity = makeQualIdent(type);
 
         List<JCExpression> attrs = new LinkedList<>();
 
@@ -161,8 +247,9 @@ public class TreeMakerHelper {
             String key = a.getKey();
             Object value = a.getValue();
 
-            Name name = namesUtil.fromString(key);
+            Name name = fromString(key);
             JCIdent ident = treeMaker.Ident(name);
+
             JCLiteral lit = treeMaker.Literal(value);
 
             JCAssign kv = treeMaker.Assign(ident, lit);

@@ -1,5 +1,7 @@
 package util;
 
+import annotation.TestGeneratedAnnotation;
+import annotation.TestMarkerAnnotation;
 import com.sun.source.tree.Tree;
 import com.sun.source.util.TaskEvent;
 import com.sun.source.util.TaskEvent.Kind;
@@ -7,11 +9,8 @@ import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.JCTree.JCCompilationUnit;
 import com.sun.tools.javac.tree.JCTree.JCModifiers;
 import com.sun.tools.javac.util.Context;
-import annotation.TestGeneratedAnnotation;
-import annotation.TestMarkerAnnotation;
 import dev.jackraidenph.jmaf.api.AbstractContextTaskListener;
 import dev.jackraidenph.jmaf.util.AccumulatingTreeScanner;
-import dev.jackraidenph.jmaf.util.AccumulatingTreeScanner.ScanContext;
 import dev.jackraidenph.jmaf.util.AccumulatingTreeScanner.TreeContext;
 import dev.jackraidenph.jmaf.util.TreeMakerHelper;
 
@@ -28,19 +27,21 @@ public class JMAFTestTaskListener extends AbstractContextTaskListener {
 
     @Override
     public void finished(TaskEvent e) {
+        if (e.getCompilationUnit() == null || !e.getKind().equals(Kind.ENTER)) {
+            return;
+        }
+
         AccumulatingTreeScanner scanner = new AccumulatingTreeScanner(context -> {
             Tree tree = context.tree();
-
+            if (tree == null) {
+                return false;
+            }
             return (tree instanceof JCModifiers modifiers)
                     && !modifiers.annotations.isEmpty()
                     && TreeMakerHelper.treeContainsAnnotation(tree, context.owner(), TestMarkerAnnotation.class);
         });
 
-        if (e.getCompilationUnit() == null || !e.getKind().equals(Kind.PARSE)) {
-            return;
-        }
-
-        e.getCompilationUnit().accept(scanner, new ScanContext());
+        e.getCompilationUnit().accept(scanner, null);
 
         for (TreeContext context : scanner.getToProcess()) {
             processTree(context);
@@ -51,9 +52,10 @@ public class JMAFTestTaskListener extends AbstractContextTaskListener {
         JCCompilationUnit compilationUnit = ((JCCompilationUnit) context.owner());
         JCTree tree = (JCTree) context.tree();
 
-        treeMakerHelper.addAnnotationAndImport(
-                compilationUnit,
+        treeMakerHelper.addAnnotation(
                 tree,
+                context.parent(),
+                context.symbol(),
                 TestGeneratedAnnotation.class,
                 Map.of("value", "test", "number", 2)
         );
