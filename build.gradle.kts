@@ -27,7 +27,9 @@ val requiredExports = listOf(
     "jdk.compiler/com.sun.tools.javac.tree",
     "jdk.compiler/com.sun.tools.javac.util",
     "jdk.compiler/com.sun.tools.javac.processing",
-    "jdk.compiler/com.sun.tools.javac.model"
+    "jdk.compiler/com.sun.tools.javac.model",
+    "jdk.compiler/com.sun.tools.javac.code",
+    "jdk.compiler/com.sun.tools.javac.comp"
 )
 
 fun makeExports(module: String): List<String> {
@@ -47,6 +49,11 @@ fun addExportsToCompile(module: String, vararg tasks: String) {
 
 addExportsToCompile("jmaf", "compileJava")
 addExportsToCompile("ALL-UNNAMED", "compileTestLibraryConsumerJava", "compileTestJava")
+
+//FOR TESTING PURPOSES ONLY
+tasks.withType<JavaCompile> {
+    outputs.upToDateWhen { false }
+}
 
 dependencies {
     testImplementation(platform("org.junit:junit-bom:6.0.0"))
