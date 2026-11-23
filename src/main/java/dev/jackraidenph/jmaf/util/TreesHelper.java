@@ -16,6 +16,7 @@ import com.sun.tools.javac.comp.AttrContext;
 import com.sun.tools.javac.comp.Enter;
 import com.sun.tools.javac.comp.Env;
 import com.sun.tools.javac.model.JavacElements;
+import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.JCTree.*;
 import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.util.Context;
@@ -27,8 +28,11 @@ import dev.jackraidenph.jmaf.annotation.meta.OverrideAttribute;
 
 import javax.lang.model.element.TypeElement;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class TreesHelper {
 
@@ -144,6 +148,62 @@ public class TreesHelper {
         return null;
     }
 
+    public Map<String, Class<? extends Function<?, ?>>> gatherTransformerTypes(TypeSymbol annotationSymbol) {
+        return annotationSymbol.getEnclosedElements().stream()
+                .filter(e -> e instanceof MethodSymbol)
+                .map(e -> (MethodSymbol) e)
+                .map(m -> m.getAnnotation(OverrideAttribute.class))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toMap(
+                        OverrideAttribute::attribute,
+                        o -> Commons.getOrUnmirrorClass(o::transformer))
+                );
+    }
+
+    public Map<String, Function<?, ?>> buildTransformers(Map<String, Class<? extends Function<?, ?>>> transformerTypes) {
+        Map<String, Function<?, ?>> transformers = new HashMap<>();
+
+        for (Entry<String, Class<? extends Function<?, ?>>> typeEntry : transformerTypes.entrySet()) {
+            String attrName = typeEntry.getKey();
+            Class<? extends Function<?, ?>> type = typeEntry.getValue();
+
+            if (type == null || type.equals(OverrideAttribute.NoOp.class)) {
+                continue;
+            }
+
+            try {
+                Function<?, ?> transformer = type.getDeclaredConstructor().newInstance();
+                transformers.put(attrName, transformer);
+            } catch (NoSuchMethodException e) {
+                throw new IllegalArgumentException("Failed to instantiate class [%s], maybe, it has not been compiled yet", e);
+            } catch (InvocationTargetException | InstantiationException | IllegalAccessException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        return transformers;
+    }
+
+    public void tryTransformAttributes(Map<String, Object> values, Map<String, ? extends Function<?, ?>> transformers) {
+        for (Entry<String, Object> e : values.entrySet()) {
+            String attributeName = e.getKey();
+            //noinspection unchecked
+            Function<Object, Object> transformer = (Function<Object, Object>) transformers.get(attributeName);
+            if (transformer == null) {
+                continue;
+            }
+
+            Object value = e.getValue();
+            try {
+                Object transformed = transformer.apply(value);
+                values.put(attributeName, transformed);
+            } catch (ClassCastException c) {
+                throw new IllegalArgumentException("Transformer type [%s] argument type mismatch".formatted(transformer.getClass().getName()), c);
+            }
+
+        }
+    }
+
     public List<JCAnnotation> unfoldTree(Tree tree) {
         List<JCAnnotation> annotations = new ArrayList<>();
         com.sun.tools.javac.util.List<JCAnnotation> existing;
@@ -180,10 +240,20 @@ public class TreesHelper {
             return List.of();
         }
 
-        List<JCAnnotation> result = new ArrayList<>();
+        Map<String, Class<? extends Function<?, ?>>> transformerTypesMap = gatherTransformerTypes(annotationSymbol);
+        Map<String, Function<?, ?>> transformersMap = buildTransformers(transformerTypesMap);
 
-        for (AnnotationWithAttributes attr : unfoldRaw(annotation)) {
-            result.add(makeAnnotation(attr));
+        List<JCAnnotation> result = new ArrayList<>();
+        for (AnnotationWithAttributes annot : unfoldRaw(annotation)) {
+            Class<? extends Annotation> type = annot.type;
+            Map<String, Object> attributes = annot.attributes;
+
+            if (!transformersMap.isEmpty()) {
+                tryTransformAttributes(attributes, transformersMap);
+            }
+
+            at(annotation.pos);
+            result.add(makeAnnotation(annot));
         }
 
         if (a.retainSelf()) {
@@ -213,25 +283,8 @@ public class TreesHelper {
         return result;
     }
 
-    public AnnotationWithAttributes tryResolveUnfolding(JCAnnotation extensionOrigin, Class<? extends Annotation> type) {
+    public AnnotationWithAttributes tryResolveUnfolding(JCAnnotation extensionOrigin, Class<? extends Annotation> extenstionTarget) {
         TypeSymbol tsym = extensionOrigin.annotationType.type.tsym;
-
-        Extends extensionClause = tsym.getAnnotation(Extends.class);
-        if (extensionClause == null) {
-            return null;
-        }
-
-        boolean needsExtension = false;
-        for (Class<? extends Annotation> e : Commons.getOrUnmirrorClassArray(extensionClause::value)) {
-            if (e.equals(type)) {
-                needsExtension = true;
-                break;
-            }
-        }
-
-        if (!needsExtension) {
-            return null;
-        }
 
         List<MethodSymbol> extensionAttributes = tsym.getEnclosedElements()
                 .stream()
@@ -243,13 +296,17 @@ public class TreesHelper {
                         return false;
                     }
 
-                    return Commons.getOrUnmirrorClass(overrideClause::in).equals(type);
+                    return Commons.getOrUnmirrorClass(overrideClause::in).equals(extenstionTarget);
                 })
                 .toList();
 
-        Map<String, Object> attributes = new HashMap<>();
-        Map<String, String> replacementMapping = new HashMap<>();
+        if (extensionAttributes.isEmpty()) {
+            return null;
+        }
 
+        Map<String, Object> attributes = new HashMap<>();
+
+        Map<String, String> replacementMapping = new HashMap<>();
         //Process implicit attributes
         for (MethodSymbol attr : extensionAttributes) {
             OverrideAttribute overrideClause = attr.getAnnotation(OverrideAttribute.class);
@@ -282,18 +339,23 @@ public class TreesHelper {
                 val = assign.rhs;
             } else {
                 key = names.value.toString();
-                val = expression;
+                Object obj;
+                if (expression instanceof JCLiteral literal) {
+                    val = literal.value;
+                } else {
+                    val = expression;
+                }
             }
 
             attributes.put(key, val);
         }
 
-        return new AnnotationWithAttributes(type, attributes);
+        return new AnnotationWithAttributes(extenstionTarget, attributes);
     }
 
     public void addAnnotationsRaw(Tree tree, JCClassDecl parent, Symbol symbol, Iterable<JCAnnotation> annotations) {
         ListBuffer<JCAnnotation> toAppend = new ListBuffer<>();
-        for(JCAnnotation a : annotations) {
+        for (JCAnnotation a : annotations) {
             toAppend.append(a);
         }
 
@@ -344,10 +406,11 @@ public class TreesHelper {
         annotate.annotateLater(newAnnots, env, symbol, parent);
     }
 
-    public void addAnnotations(Tree tree, JCClassDecl parent, Symbol symbol, Iterable<AnnotationWithAttributes> attributes) {
+    public void addAnnotations(JCTree tree, JCClassDecl parent, Symbol symbol, Iterable<AnnotationWithAttributes> attributes) {
         com.sun.tools.javac.util.List<JCAnnotation> annotations = getAnnotations(tree);
         List<JCAnnotation> result = new ArrayList<>();
-        for(AnnotationWithAttributes a : attributes) {
+        for (AnnotationWithAttributes a : attributes) {
+            at(tree.pos);
             result.add(makeAnnotation(a.type, a.attributes));
         }
         addAnnotationsRaw(tree, parent, symbol, result);

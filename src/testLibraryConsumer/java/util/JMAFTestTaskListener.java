@@ -1,6 +1,5 @@
 package util;
 
-import annotation.TestGeneratedAnnotation;
 import annotation.TestMarkerAnnotation;
 import com.sun.source.tree.Tree;
 import com.sun.source.util.TaskEvent;
@@ -13,10 +12,6 @@ import dev.jackraidenph.jmaf.api.AbstractContextTaskListener;
 import dev.jackraidenph.jmaf.util.AccumulatingTreeScanner;
 import dev.jackraidenph.jmaf.util.AccumulatingTreeScanner.TreeContext;
 import dev.jackraidenph.jmaf.util.TreesHelper;
-import dev.jackraidenph.jmaf.util.TreesHelper.AnnotationWithAttributes;
-
-import java.util.List;
-import java.util.Map;
 
 public class JMAFTestTaskListener extends AbstractContextTaskListener {
 
@@ -53,17 +48,5 @@ public class JMAFTestTaskListener extends AbstractContextTaskListener {
     private void processTree(TreeContext context) {
         JCCompilationUnit compilationUnit = ((JCCompilationUnit) context.owner());
         JCTree tree = (JCTree) context.tree();
-
-        treeMakerHelper.addAnnotations(
-                tree,
-                context.parent(),
-                context.symbol(),
-                List.of(
-                        new AnnotationWithAttributes(
-                                TestGeneratedAnnotation.class,
-                                Map.of("value", "test", "number", 2)
-                        )
-                )
-        );
     }
 }
