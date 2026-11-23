@@ -5,6 +5,7 @@ import com.sun.source.util.Plugin;
 import com.sun.tools.javac.api.BasicJavacTask;
 import com.sun.tools.javac.util.Context;
 import dev.jackraidenph.jmaf.api.AbstractContextTaskListener;
+import dev.jackraidenph.jmaf.api.StringAttributeInterpolator;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -14,13 +15,21 @@ import java.util.*;
 
 public class JMAFCompilerPlugin implements Plugin {
     public static final String NAME = "JMAFCompilerPlugin";
-    public static final String TASKS_FILE_PATH = "META-INF/jmaf.tasks";
+    public static final String LISTENERS_FILE_PATH = "META-INF/jmaf.listeners";
+    public static final String INTERPOLATORS_FILE_PATH = "META-INF/jmaf.interpolators";
 
     @Override
     public void init(JavacTask task, String... args) {
-        Collection<AbstractContextTaskListener> listeners = constructListeners(
-                loadListenerClasses(readListenerClasses()),
-                ((BasicJavacTask) task).getContext()
+        Collection<StringAttributeInterpolator> interpolators = constructClasses(
+                loadClasses(readClasses(INTERPOLATORS_FILE_PATH), StringAttributeInterpolator.class),
+                new Class[]{}
+        );
+
+        Collection<AbstractContextTaskListener> listeners = constructClasses(
+                loadClasses(readClasses(LISTENERS_FILE_PATH), AbstractContextTaskListener.class),
+                new Class[]{Context.class, Collection.class},
+                ((BasicJavacTask) task).getContext(),
+                interpolators
         );
 
         for (AbstractContextTaskListener contextTaskListener : listeners) {
@@ -28,9 +37,9 @@ public class JMAFCompilerPlugin implements Plugin {
         }
     }
 
-    private Collection<String> readListenerClasses() {
+    private Collection<String> readClasses(String path) {
         List<URL> listenerRegistryFiles = new ArrayList<>();
-        getClass().getClassLoader().resources(TASKS_FILE_PATH).forEach(listenerRegistryFiles::add);
+        getClass().getClassLoader().resources(path).forEach(listenerRegistryFiles::add);
 
         Set<String> listenerClasses = new HashSet<>();
         for (URL url : listenerRegistryFiles) {
@@ -44,15 +53,16 @@ public class JMAFCompilerPlugin implements Plugin {
         return listenerClasses;
     }
 
-    private Collection<Class<? extends AbstractContextTaskListener>> loadListenerClasses(Iterable<String> classNames) {
-        List<Class<? extends AbstractContextTaskListener>> classes = new LinkedList<>();
+    private <T> Collection<Class<? extends T>> loadClasses(Iterable<String> classNames, Class<? extends T> target) {
+        List<Class<? extends T>> classes = new LinkedList<>();
         for (String name : classNames) {
             try {
                 Class<?> clazz = Class.forName(name);
-                if (!AbstractContextTaskListener.class.isAssignableFrom(clazz)) {
-                    throw new IllegalArgumentException("%s is not a subclass of %s".formatted(clazz.getName(), AbstractContextTaskListener.class.getName()));
+                if (!target.isAssignableFrom(clazz)) {
+                    throw new IllegalArgumentException("%s is not a subclass of %s".formatted(clazz.getName(), target.getName()));
                 }
-                classes.add(clazz.asSubclass(AbstractContextTaskListener.class));
+
+                classes.add(clazz.asSubclass(target));
             } catch (ClassNotFoundException e) {
                 throw new IllegalArgumentException(e);
             }
@@ -61,17 +71,12 @@ public class JMAFCompilerPlugin implements Plugin {
         return classes;
     }
 
-    private Collection<AbstractContextTaskListener> constructListeners(
-            Iterable<Class<? extends AbstractContextTaskListener>> listenerClasses,
-            Object... args
-    ) {
-        List<AbstractContextTaskListener> listeners = new LinkedList<>();
-        for (Class<? extends AbstractContextTaskListener> clazz : listenerClasses) {
+    private <T> Collection<T> constructClasses(Iterable<Class<? extends T>> listenerClasses, Class<?>[] argTypes, Object... args) {
+        List<T> listeners = new ArrayList<>();
+        for (Class<? extends T> clazz : listenerClasses) {
             try {
-                AbstractContextTaskListener constructed = clazz
-                        .getConstructor(Context.class)
-                        .newInstance(args);
 
+                T constructed = clazz.getConstructor(argTypes).newInstance(args);
                 listeners.add(constructed);
             } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
                      NoSuchMethodException e) {

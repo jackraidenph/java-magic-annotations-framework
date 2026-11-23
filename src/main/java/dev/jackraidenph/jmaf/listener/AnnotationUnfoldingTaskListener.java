@@ -10,15 +10,17 @@ import com.sun.tools.javac.tree.JCTree.JCCompilationUnit;
 import com.sun.tools.javac.tree.JCTree.JCModifiers;
 import com.sun.tools.javac.util.Context;
 import dev.jackraidenph.jmaf.api.AbstractContextTaskListener;
+import dev.jackraidenph.jmaf.api.StringAttributeInterpolator;
 import dev.jackraidenph.jmaf.util.AccumulatingTreeScanner;
 import dev.jackraidenph.jmaf.util.AccumulatingTreeScanner.TreeContext;
 import dev.jackraidenph.jmaf.util.TreesHelper;
 
+import java.util.Collection;
 import java.util.List;
 
 public class AnnotationUnfoldingTaskListener extends AbstractContextTaskListener {
-    public AnnotationUnfoldingTaskListener(Context context) {
-        super(context);
+    public AnnotationUnfoldingTaskListener(Context context, Collection<StringAttributeInterpolator> interpolators) {
+        super(context, interpolators);
     }
 
     @Override
@@ -28,8 +30,10 @@ public class AnnotationUnfoldingTaskListener extends AbstractContextTaskListener
         AccumulatingTreeScanner scanner = new AccumulatingTreeScanner(context -> {
             Tree tree = context.tree();
 
-            return ((tree instanceof JCModifiers modifiers && !modifiers.annotations.isEmpty()) || (tree instanceof JCAnnotatedType annotatedType && !annotatedType.annotations.isEmpty()))
-                    && (helper.getAnyUnfoldingAnnotation(tree) != null);
+            return (
+                    (tree instanceof JCModifiers modifiers && !modifiers.annotations.isEmpty())
+                            || (tree instanceof JCAnnotatedType annotatedType && !annotatedType.annotations.isEmpty())
+            ) && (helper.getAnyUnfoldingAnnotation(tree) != null);
         });
 
         if (e.getCompilationUnit() == null || !e.getKind().equals(Kind.ANALYZE)) {
@@ -53,7 +57,7 @@ public class AnnotationUnfoldingTaskListener extends AbstractContextTaskListener
         JCCompilationUnit compilationUnit = ((JCCompilationUnit) context.owner());
         JCTree tree = (JCTree) context.tree();
 
-        List<JCAnnotation> annotationList = helper.unfoldTree(tree);
+        List<JCAnnotation> annotationList = helper.unfoldTree(tree, this.getInterpolators());
 
         if (tree instanceof JCModifiers modifiers) {
             TreesHelper.clearAnnotations(modifiers);

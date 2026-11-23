@@ -15,7 +15,7 @@ public class TestClass {
     }
 
     @TestMarkerAnnotation(explicitOverride = TestClass.class)
-    public void testMethodArgs(@TestMarkerAnnotation(explicitOverride = TestClass.class) int arg) {
+    public void testMethodArgs(@TestMarkerAnnotation(explicitOverride = TestClass.class, interpolated = true) int arg) {
 
     }
 

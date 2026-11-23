@@ -25,6 +25,7 @@ import com.sun.tools.javac.util.Name;
 import com.sun.tools.javac.util.Names;
 import dev.jackraidenph.jmaf.annotation.meta.Extends;
 import dev.jackraidenph.jmaf.annotation.meta.OverrideAttribute;
+import dev.jackraidenph.jmaf.api.StringAttributeInterpolator;
 
 import javax.lang.model.element.TypeElement;
 import java.lang.annotation.Annotation;
@@ -32,10 +33,13 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class TreesHelper {
 
+    private static final Pattern INTERPOLATION_GROUPS = Pattern.compile("(\\$\\{(.*)})");
     private final TreeMaker treeMaker;
     private final Names names;
     private final Context context;
@@ -204,7 +208,51 @@ public class TreesHelper {
         }
     }
 
-    public List<JCAnnotation> unfoldTree(Tree tree) {
+    public String tryInterpolateString(String str, Collection<StringAttributeInterpolator> interpolators) {
+        List<String> captures = new ArrayList<>();
+
+        Matcher matcher = INTERPOLATION_GROUPS.matcher(str);
+        while (matcher.find()) {
+            String capture = matcher.group(2);
+            String interpolated = null;
+            String newValue;
+            for (StringAttributeInterpolator i : interpolators) {
+                if (i.filter(capture)) {
+                    if (interpolated != null) {
+                        throw new IllegalStateException("Several interpolators match capture ${%s}: [%s] and [%s]".formatted(capture, interpolated, i.id()));
+                    }
+
+                    newValue = i.apply(capture);
+                    interpolated = i.id();
+
+                    str = str.replace(matcher.group(1), newValue);
+                }
+            }
+
+            if (interpolated == null) {
+                System.err.printf("Couldn't interpolated capture ${%s}, no interpolator found%n", capture);
+            }
+        }
+
+        return str;
+    }
+
+    public void tryInterpolateAttributes(Map<String, Object> attributes, Collection<StringAttributeInterpolator> interpolators) {
+        if (interpolators.isEmpty()) {
+            return;
+        }
+
+        for (Entry<String, Object> e : attributes.entrySet()) {
+            String key = e.getKey();
+            Object value = e.getValue();
+            if (value instanceof String string) {
+                value = tryInterpolateString(string, interpolators);
+                attributes.put(key, value);
+            }
+        }
+    }
+
+    public List<JCAnnotation> unfoldTree(Tree tree, Collection<StringAttributeInterpolator> interpolators) {
         List<JCAnnotation> annotations = new ArrayList<>();
         com.sun.tools.javac.util.List<JCAnnotation> existing;
         if (tree instanceof JCModifiers modifiers) {
@@ -217,7 +265,7 @@ public class TreesHelper {
 
         for (JCAnnotation annotation : existing) {
             if (needsUnfolding(annotation)) {
-                annotations.addAll(unfoldAnnotation(annotation));
+                annotations.addAll(unfoldAnnotation(annotation, interpolators));
             } else {
                 annotations.add(annotation);
             }
@@ -226,7 +274,7 @@ public class TreesHelper {
         return annotations;
     }
 
-    public List<JCAnnotation> unfoldAnnotation(JCAnnotation annotation) {
+    public List<JCAnnotation> unfoldAnnotation(JCAnnotation annotation, Collection<StringAttributeInterpolator> interpolators) {
         TypeSymbol annotationSymbol;
         try {
             annotationSymbol = annotation.annotationType.type.tsym;
@@ -250,6 +298,10 @@ public class TreesHelper {
 
             if (!transformersMap.isEmpty()) {
                 tryTransformAttributes(attributes, transformersMap);
+            }
+
+            if (!interpolators.isEmpty()) {
+                tryInterpolateAttributes(attributes, interpolators);
             }
 
             at(annotation.pos);
@@ -339,12 +391,11 @@ public class TreesHelper {
                 val = assign.rhs;
             } else {
                 key = names.value.toString();
-                Object obj;
-                if (expression instanceof JCLiteral literal) {
-                    val = literal.value;
-                } else {
-                    val = expression;
-                }
+                val = expression;
+            }
+
+            if (val instanceof JCLiteral literal) {
+                val = literal.getValue();
             }
 
             attributes.put(key, val);

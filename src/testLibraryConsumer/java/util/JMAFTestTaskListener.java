@@ -9,16 +9,19 @@ import com.sun.tools.javac.tree.JCTree.JCCompilationUnit;
 import com.sun.tools.javac.tree.JCTree.JCModifiers;
 import com.sun.tools.javac.util.Context;
 import dev.jackraidenph.jmaf.api.AbstractContextTaskListener;
+import dev.jackraidenph.jmaf.api.StringAttributeInterpolator;
 import dev.jackraidenph.jmaf.util.AccumulatingTreeScanner;
 import dev.jackraidenph.jmaf.util.AccumulatingTreeScanner.TreeContext;
 import dev.jackraidenph.jmaf.util.TreesHelper;
+
+import java.util.Collection;
 
 public class JMAFTestTaskListener extends AbstractContextTaskListener {
 
     private final TreesHelper treeMakerHelper;
 
-    public JMAFTestTaskListener(Context context) {
-        super(context);
+    public JMAFTestTaskListener(Context context, Collection<StringAttributeInterpolator> interpolators) {
+        super(context, interpolators);
         this.treeMakerHelper = new TreesHelper(context);
     }
 
