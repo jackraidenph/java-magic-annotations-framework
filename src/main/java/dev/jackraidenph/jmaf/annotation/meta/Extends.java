@@ -8,5 +8,9 @@ import java.lang.annotation.*;
 public @interface Extends {
     Class<? extends Annotation>[] value();
 
-    boolean retainSelf() default true;
+    /**
+     *
+     * @return Whether the annotation stays after unfloding, defaults to false, since it may cause recursive behaviour
+     */
+    boolean retainSelf() default false;
 }

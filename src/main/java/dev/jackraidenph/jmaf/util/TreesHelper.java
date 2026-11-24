@@ -19,10 +19,7 @@ import com.sun.tools.javac.model.JavacElements;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.JCTree.*;
 import com.sun.tools.javac.tree.TreeMaker;
-import com.sun.tools.javac.util.Context;
-import com.sun.tools.javac.util.ListBuffer;
-import com.sun.tools.javac.util.Name;
-import com.sun.tools.javac.util.Names;
+import com.sun.tools.javac.util.*;
 import dev.jackraidenph.jmaf.annotation.meta.Extends;
 import dev.jackraidenph.jmaf.annotation.meta.OverrideAttribute;
 import dev.jackraidenph.jmaf.api.StringAttributeInterpolator;
@@ -31,6 +28,7 @@ import javax.lang.model.element.TypeElement;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
+import java.util.List;
 import java.util.Map.Entry;
 import java.util.function.Function;
 import java.util.regex.Matcher;
@@ -252,28 +250,6 @@ public class TreesHelper {
         }
     }
 
-    public List<JCAnnotation> unfoldTree(Tree tree, Collection<StringAttributeInterpolator> interpolators) {
-        List<JCAnnotation> annotations = new ArrayList<>();
-        com.sun.tools.javac.util.List<JCAnnotation> existing;
-        if (tree instanceof JCModifiers modifiers) {
-            existing = modifiers.annotations;
-        } else if (tree instanceof JCAnnotatedType type) {
-            existing = type.annotations;
-        } else {
-            throw new IllegalArgumentException("The tree type is not annotated");
-        }
-
-        for (JCAnnotation annotation : existing) {
-            if (needsUnfolding(annotation)) {
-                annotations.addAll(unfoldAnnotation(annotation, interpolators));
-            } else {
-                annotations.add(annotation);
-            }
-        }
-
-        return annotations;
-    }
-
     public List<JCAnnotation> unfoldAnnotation(JCAnnotation annotation, Collection<StringAttributeInterpolator> interpolators) {
         TypeSymbol annotationSymbol;
         try {
@@ -351,11 +327,6 @@ public class TreesHelper {
                     return Commons.getOrUnmirrorClass(overrideClause::in).equals(extenstionTarget);
                 })
                 .toList();
-
-        if (extensionAttributes.isEmpty()) {
-            return null;
-        }
-
         Map<String, Object> attributes = new HashMap<>();
 
         Map<String, String> replacementMapping = new HashMap<>();
@@ -548,5 +519,28 @@ public class TreesHelper {
     }
 
     public record AnnotationWithAttributes(Class<? extends Annotation> type, Map<String, Object> attributes) {
+        public static AnnotationWithAttributes fromJC(JCAnnotation annotation) {
+            Map<String, Object> attrs = new HashMap<>();
+
+            if (annotation.attribute != null) {
+                for (Pair<MethodSymbol, Attribute> e : annotation.attribute.values) {
+                    String k = e.fst.getSimpleName().toString();
+                    Object obj = e.snd.getValue();
+                    attrs.put(k, obj);
+                }
+            }
+
+            try {
+                Class<? extends Annotation> clazz = Class.forName(annotation.type.tsym.flatName().toString()).asSubclass(Annotation.class);
+                return new AnnotationWithAttributes(clazz, attrs);
+            } catch (ClassNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        @Override
+        public String toString() {
+            return type().getSimpleName() + attributes().toString();
+        }
     }
 }

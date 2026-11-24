@@ -8,6 +8,7 @@ public class DirectedHashGraph<T> implements DirectedGraph<T> {
     protected final Map<T, SequencedSet<T>> adjacencyMap;
     protected final Set<T> nodes;
     private final boolean allowsCycles;
+    private final List<T> lastCycleChain = new LinkedList<>();
     private T origin = null;
     private int edgesAmount = 0;
 
@@ -197,11 +198,17 @@ public class DirectedHashGraph<T> implements DirectedGraph<T> {
     @Override
     public boolean hasCycles(T origin) {
         int nodesAmount = getNodes().size();
+        lastCycleChain.clear();
         return hasCycleStep(origin, new HashSet<>(nodesAmount), new HashSet<>(nodesAmount));
+    }
+
+    public Collection<T> getLastEncounteredCycle() {
+        return lastCycleChain;
     }
 
     private boolean hasCycleStep(T current, Set<T> visited, Set<T> stack) {
         if (stack.contains(current)) {
+            lastCycleChain.add(current);
             return true;
         }
 
@@ -211,6 +218,7 @@ public class DirectedHashGraph<T> implements DirectedGraph<T> {
 
         visited.add(current);
         stack.add(current);
+        lastCycleChain.add(current);
         for (T i : getAdjacentNodes(current)) {
             if (hasCycleStep(i, visited, stack)) {
                 return true;
