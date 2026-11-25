@@ -1,9 +1,13 @@
 package dev.jackraidenph.jmaf.util;
 
 import com.sun.tools.javac.code.Symbol.TypeSymbol;
+import com.sun.tools.javac.util.Context;
+import com.sun.tools.javac.util.JCDiagnostic.DiagnosticPosition;
+import com.sun.tools.javac.util.Log;
 
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.*;
+import javax.tools.JavaFileObject;
 import java.lang.annotation.Annotation;
 import java.util.List;
 import java.util.function.Supplier;
@@ -95,6 +99,17 @@ public final class Commons {
     }
 
     public static class Javac {
+
+        public static void log(DiagnosticPosition pos, String message, JavaFileObject source, Context context) {
+            Log log = Log.instance(context);
+
+            JavaFileObject prevSource = log.useSource(source);
+            try {
+                log.error(pos.getPreferredPosition(), "proc.messager", message);
+            } finally {
+                log.useSource(prevSource);
+            }
+        }
 
         public static String binaryName(TypeMirror typeMirror) {
             if (typeMirror instanceof PrimitiveType primitiveType) {

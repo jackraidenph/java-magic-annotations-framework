@@ -1,8 +1,6 @@
 package dev.jackraidenph.jmaf.util;
 
-import com.sun.source.tree.CompilationUnitTree;
-import com.sun.source.tree.ImportTree;
-import com.sun.source.tree.Tree;
+import com.sun.source.tree.*;
 import com.sun.source.tree.Tree.Kind;
 import com.sun.tools.javac.code.Attribute;
 import com.sun.tools.javac.code.Symbol;
@@ -11,6 +9,7 @@ import com.sun.tools.javac.code.Symbol.MethodSymbol;
 import com.sun.tools.javac.code.Symbol.PackageSymbol;
 import com.sun.tools.javac.code.Symbol.TypeSymbol;
 import com.sun.tools.javac.code.Symtab;
+import com.sun.tools.javac.code.Type;
 import com.sun.tools.javac.comp.Annotate;
 import com.sun.tools.javac.comp.AttrContext;
 import com.sun.tools.javac.comp.Enter;
@@ -127,6 +126,28 @@ public class TreesHelper {
         modifiers.annotations = com.sun.tools.javac.util.List.from(new JCAnnotation[0]);
     }
 
+    public static boolean annotatedWithAny(Tree tree) {
+        return (tree instanceof JCModifiers modifiers && !modifiers.annotations.isEmpty()) || (tree instanceof JCAnnotatedType annotatedType && !annotatedType.annotations.isEmpty());
+    }
+
+    public static ModifiersTree tryGetModifiers(Tree tree) {
+        return switch (tree) {
+            case ClassTree classTree -> classTree.getModifiers();
+            case MethodTree methodTree -> methodTree.getModifiers();
+            case VariableTree variableTree -> variableTree.getModifiers();
+            case null, default -> null;
+        };
+    }
+
+    public static Type getType(JCTree tree) {
+        return switch (tree) {
+            case JCVariableDecl jc -> jc.getType().type;
+            case JCMethodDecl jc -> jc.getReturnType().type;
+            case JCClassDecl jc -> jc.type;
+            default -> throw new IllegalStateException("Unexpected value: " + tree);
+        };
+    }
+
     public TreeMaker wrapped() {
         return this.treeMaker;
     }
@@ -136,18 +157,32 @@ public class TreesHelper {
         return this;
     }
 
-    public Extends getAnyUnfoldingAnnotation(Tree tree) {
+    public <T extends Annotation> T isAnyAnnotatedWith(Tree tree, Class<T> type) {
         com.sun.tools.javac.util.List<JCAnnotation> annotations = getAnnotations(tree);
 
         for (JCAnnotation annotation : annotations) {
             TypeSymbol annotationSymbol = annotation.annotationType.type.tsym;
-            Extends a = annotationSymbol.getAnnotation(Extends.class);
+            T a = annotationSymbol.getAnnotation(type);
             if (a != null) {
                 return a;
             }
         }
 
         return null;
+    }
+
+    public <T extends Annotation> Map<Tree, Collection<T>> getAllAnnotatedWith(List<JCAnnotation> annotations, Class<T> type) {
+        Map<Tree, Collection<T>> result = new HashMap<>();
+
+        for (JCAnnotation annotation : annotations) {
+            TypeSymbol annotationSymbol = annotation.annotationType.type.tsym;
+            T a = annotationSymbol.getAnnotation(type);
+            if (a != null) {
+                result.computeIfAbsent(annotation, k -> new ArrayList<>()).add(a);
+            }
+        }
+
+        return result;
     }
 
     public Map<String, Class<? extends Function<?, ?>>> gatherTransformerTypes(TypeSymbol annotationSymbol) {

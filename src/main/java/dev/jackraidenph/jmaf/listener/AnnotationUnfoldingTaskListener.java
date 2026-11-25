@@ -9,6 +9,7 @@ import com.sun.tools.javac.tree.JCTree.JCAnnotation;
 import com.sun.tools.javac.tree.JCTree.JCCompilationUnit;
 import com.sun.tools.javac.tree.JCTree.JCModifiers;
 import com.sun.tools.javac.util.Context;
+import dev.jackraidenph.jmaf.annotation.meta.Extends;
 import dev.jackraidenph.jmaf.api.AbstractContextTaskListener;
 import dev.jackraidenph.jmaf.api.StringAttributeInterpolator;
 import dev.jackraidenph.jmaf.graph.DirectedGraph;
@@ -44,20 +45,16 @@ public class AnnotationUnfoldingTaskListener extends AbstractContextTaskListener
 
     @Override
     public void started(TaskEvent e) {
+        if (e.getCompilationUnit() == null || !e.getKind().equals(Kind.ANALYZE)) {
+            return;
+        }
+
         TreesHelper helper = new TreesHelper(getContext());
 
         AccumulatingTreeScanner scanner = new AccumulatingTreeScanner(context -> {
             Tree tree = context.tree();
-
-            return (
-                    (tree instanceof JCModifiers modifiers && !modifiers.annotations.isEmpty())
-                            || (tree instanceof JCAnnotatedType annotatedType && !annotatedType.annotations.isEmpty())
-            ) && (helper.getAnyUnfoldingAnnotation(tree) != null);
+            return TreesHelper.annotatedWithAny(tree) && helper.isAnyAnnotatedWith(tree, Extends.class) != null;
         });
-
-        if (e.getCompilationUnit() == null || !e.getKind().equals(Kind.ANALYZE)) {
-            return;
-        }
 
         e.getCompilationUnit().accept(scanner, null);
 

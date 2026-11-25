@@ -1,1 +1,2 @@
 dev.jackraidenph.jmaf.listener.AnnotationUnfoldingTaskListener
+dev.jackraidenph.jmaf.listener.AnnotationValidatingTaskListener
